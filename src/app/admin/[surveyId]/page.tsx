@@ -27,6 +27,7 @@ interface AnswerRow { question_id: string; value: number }
 interface ResponseRow {
   id: string;
   anonymous_user_id: string;
+  role: string;
   submitted_at: string;
   score: number;
   answers: AnswerRow[];
@@ -147,7 +148,7 @@ export default function AdminPage() {
     if (!analytics) return;
     const qIds = analytics.questions.map(q => q.id);
     const qTexts = analytics.questions.map(q => q.text);
-    const header = ['User ID', 'Submitted At', 'Score', ...qTexts];
+    const header = ['User ID', 'Role', 'Submitted At', 'Score', ...qTexts];
     const rows = responses.map(r => {
       const vals = qIds.map(qid => {
         const a = r.answers.find(a => a.question_id === qid);
@@ -155,7 +156,7 @@ export default function AdminPage() {
         const m = EMOJI_META.find(m => m.value === Number(a.value));
         return m ? (m.emoji + ' ' + m.value + ' - ' + m.label) : a.value;
       });
-      return [r.anonymous_user_id, new Date(r.submitted_at).toLocaleString(), r.score, ...vals];
+      return [r.anonymous_user_id, r.role || '', new Date(r.submitted_at).toLocaleString(), r.score, ...vals];
     });
     const csv = [header, ...rows].map(row => row.map(c => '"' + c + '"').join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -285,6 +286,7 @@ export default function AdminPage() {
                 <thead>
                   <tr style={{ background: '#F8F8F8', borderBottom: '2px solid #E8E8E8' }}>
                     <th style={{ padding: '10px 12px', textAlign: 'left', color: '#555', fontWeight: 600, whiteSpace: 'nowrap' }}>Submitted</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', color: '#555', fontWeight: 600 }}>Role</th>
                     <th style={{ padding: '10px 12px', textAlign: 'center', color: '#555', fontWeight: 600 }}>Score</th>
                     {analytics.questions.map((q, i) => (
                       <th key={q.id} style={{ padding: '10px 12px', textAlign: 'center', color: '#555', fontWeight: 600, minWidth: 80 }}>Q{i + 1}</th>
@@ -297,6 +299,11 @@ export default function AdminPage() {
                     <tr key={r.id} style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>
                       <td style={{ padding: '10px 12px', color: '#444', whiteSpace: 'nowrap' }}>
                         {new Date(r.submitted_at).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{ background: '#F0F0F0', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600, color: DARK, whiteSpace: 'nowrap' }}>
+                          {r.role || '—'}
+                        </span>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                         <span style={{

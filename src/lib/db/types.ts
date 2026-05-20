@@ -15,6 +15,7 @@ export interface SurveyResponse {
   id: string;
   survey_id: string;
   anonymous_user_id: string;
+  role: string;
   score: number;
   submitted_at: string;
 }

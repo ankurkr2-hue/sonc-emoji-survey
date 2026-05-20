@@ -14,6 +14,13 @@ const EMOJIS: { value: number; emoji: string; label: string }[] = [
   { value: 1, emoji: '😞', label: 'Poor' },
 ];
 
+const ROLES = [
+  { value: 'Athlete',          icon: '🏅' },
+  { value: 'Volunteer',        icon: '🤝' },
+  { value: 'Unified Partner',  icon: '👥' },
+  { value: 'Other',            icon: '✏️' },
+];
+
 interface Question { id: string; text: string; display_order: number }
 interface SurveyData { id: string; title: string; questions: Question[] }
 
@@ -35,7 +42,9 @@ export default function SurveyPage() {
   const { surveyId } = useParams<{ surveyId: string }>();
   const [survey, setSurvey] = useState<SurveyData | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [status, setStatus] = useState<'loading' | 'ready' | 'submitting' | 'done' | 'blocked' | 'error'>('loading');
+  const [role, setRole] = useState('');
+  const [otherText, setOtherText] = useState('');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'submitting' | 'done' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [countdown, setCountdown] = useState(5);
 
@@ -56,6 +65,14 @@ export default function SurveyPage() {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   }
 
+  const finalRole = role === 'Other' ? (otherText.trim() || 'Other') : role;
+  const roleReady = role !== '' && (role !== 'Other' || otherText.trim() !== '');
+  const answeredCount = survey ? survey.questions.filter(q => answers[q.id] !== undefined).length : 0;
+  const allAnswered = survey ? roleReady && answeredCount === survey.questions.length : false;
+  const progress = survey && survey.questions.length > 0
+    ? ((roleReady ? 1 : 0) + answeredCount) / (survey.questions.length + 1) * 100
+    : 0;
+
   async function handleSubmit() {
     if (!survey) return;
     setStatus('submitting');
@@ -66,10 +83,10 @@ export default function SurveyPage() {
       body: JSON.stringify({
         survey_id: surveyId,
         anonymous_user_id: userId,
+        role: finalRole,
         answers: Object.entries(answers).map(([question_id, value]) => ({ question_id, value })),
       }),
     });
-    if (res.status === 429) { setStatus('blocked'); return; }
     if (!res.ok) { setErrorMsg('Submission failed. Please try again.'); setStatus('error'); return; }
     setStatus('done');
     setTimeout(() => window.location.reload(), 5000);
@@ -78,10 +95,7 @@ export default function SurveyPage() {
   }
 
   if (status === 'loading') return (
-    <>
-      <Header />
-      <div style={{ textAlign: 'center', padding: 48, color: '#777' }}>Loading survey…</div>
-    </>
+    <><Header /><div style={{ textAlign: 'center', padding: 48, color: '#777' }}>Loading…</div></>
   );
 
   if (status === 'error') return (
@@ -90,19 +104,6 @@ export default function SurveyPage() {
       <div style={{ maxWidth: 560, margin: '0 auto', padding: 24 }}>
         <div style={{ background: '#fff3f3', border: `1px solid ${RED}`, borderRadius: 8, padding: 20, color: RED }}>
           <strong>Error:</strong> {errorMsg || 'Could not load survey.'}
-        </div>
-      </div>
-    </>
-  );
-
-  if (status === 'blocked') return (
-    <>
-      <Header />
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: 24, textAlign: 'center' }}>
-        <div style={{ background: '#fff', borderRadius: 12, padding: 40, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-          <h2 style={{ color: DARK, marginBottom: 8 }}>Already Submitted</h2>
-          <p style={{ color: '#666' }}>You've already responded in the last 24 hours. Thank you!</p>
         </div>
       </div>
     </>
@@ -129,11 +130,6 @@ export default function SurveyPage() {
 
   if (!survey) return null;
 
-  const answered = survey.questions.filter(q => answers[q.id] !== undefined).length;
-  const total = survey.questions.length;
-  const allAnswered = answered === total;
-  const progress = total > 0 ? (answered / total) * 100 : 0;
-
   return (
     <>
       <Header />
@@ -145,14 +141,75 @@ export default function SurveyPage() {
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: '#666' }}>
             <span>Progress</span>
-            <span>{answered} of {total} answered</span>
+            <span>{(roleReady ? 1 : 0) + answeredCount} of {survey.questions.length + 1} answered</span>
           </div>
           <div style={{ height: 8, background: '#E0E0E0', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${progress}%`, background: RED, borderRadius: 4, transition: 'width 0.25s ease' }} />
           </div>
         </div>
 
-        {/* Questions */}
+        {/* Role question — always first */}
+        <div style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: '24px 20px',
+          marginBottom: 16,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          border: roleReady ? `2px solid ${RED}` : '2px solid transparent',
+          transition: 'border-color 0.2s',
+        }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: DARK, marginBottom: 18, lineHeight: 1.5 }}>
+            <span style={{ color: RED, marginRight: 6 }}>1.</span>What is your role at today's event?
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {ROLES.map(({ value, icon }) => {
+              const isSelected = role === value;
+              return (
+                <button
+                  key={value}
+                  onClick={() => { setRole(value); if (value !== 'Other') setOtherText(''); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '14px 16px',
+                    background: isSelected ? '#FFF0F2' : '#F7F7F7',
+                    border: `2px solid ${isSelected ? RED : '#E0E0E0'}`,
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: 24 }}>{icon}</span>
+                  <span style={{ fontSize: 14, fontWeight: isSelected ? 700 : 400, color: isSelected ? RED : DARK }}>
+                    {value}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {role === 'Other' && (
+            <input
+              autoFocus
+              type="text"
+              placeholder="Please describe your role…"
+              value={otherText}
+              onChange={e => setOtherText(e.target.value)}
+              style={{
+                marginTop: 12,
+                width: '100%',
+                padding: '10px 14px',
+                border: `2px solid ${RED}`,
+                borderRadius: 8,
+                fontSize: 14,
+                outline: 'none',
+              }}
+            />
+          )}
+        </div>
+
+        {/* Emoji questions */}
         {survey.questions.map((q, i) => {
           const selected = answers[q.id];
           return (
@@ -166,7 +223,7 @@ export default function SurveyPage() {
               transition: 'border-color 0.2s',
             }}>
               <p style={{ fontSize: 15, fontWeight: 600, color: DARK, marginBottom: 18, lineHeight: 1.5 }}>
-                <span style={{ color: RED, marginRight: 6 }}>{i + 1}.</span>{q.text}
+                <span style={{ color: RED, marginRight: 6 }}>{i + 2}.</span>{q.text}
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {EMOJIS.map(({ value, emoji, label }) => {
@@ -175,7 +232,6 @@ export default function SurveyPage() {
                     <button
                       key={value}
                       onClick={() => pickAnswer(q.id, value)}
-                      title={label}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
