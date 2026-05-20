@@ -37,6 +37,7 @@ export default function SurveyPage() {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [status, setStatus] = useState<'loading' | 'ready' | 'submitting' | 'done' | 'blocked' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
     fetch(`/api/survey/${surveyId}`)
@@ -71,6 +72,9 @@ export default function SurveyPage() {
     if (res.status === 429) { setStatus('blocked'); return; }
     if (!res.ok) { setErrorMsg('Submission failed. Please try again.'); setStatus('error'); return; }
     setStatus('done');
+    setTimeout(() => window.location.reload(), 5000);
+    let c = 5;
+    const iv = setInterval(() => { c--; setCountdown(c); if (c <= 0) clearInterval(iv); }, 1000);
   }
 
   if (status === 'loading') return (
@@ -114,6 +118,9 @@ export default function SurveyPage() {
           <p style={{ color: '#555', fontSize: 16, lineHeight: 1.6 }}>
             Your feedback helps us make Special Olympics NC events even better.<br />
             We appreciate you sharing your experience!
+          </p>
+          <p style={{ marginTop: 24, color: '#aaa', fontSize: 14 }}>
+            Resetting for next participant in <strong style={{ color: DARK }}>{countdown}</strong>s…
           </p>
         </div>
       </div>
