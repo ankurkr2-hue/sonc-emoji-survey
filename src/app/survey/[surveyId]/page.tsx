@@ -44,6 +44,7 @@ export default function SurveyPage() {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [role, setRole] = useState('');
   const [otherText, setOtherText] = useState('');
+  const [feedback, setFeedback] = useState('');
   const [status, setStatus] = useState<'loading' | 'ready' | 'submitting' | 'done' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [countdown, setCountdown] = useState(5);
@@ -68,10 +69,10 @@ export default function SurveyPage() {
   const finalRole = role === 'Other' ? (otherText.trim() || 'Other') : role;
   const roleReady = role !== '' && (role !== 'Other' || otherText.trim() !== '');
   const answeredCount = survey ? survey.questions.filter(q => answers[q.id] !== undefined).length : 0;
+  const totalSteps = survey ? survey.questions.length + 1 : 1; // +1 for role
+  const completedSteps = (roleReady ? 1 : 0) + answeredCount;
   const allAnswered = survey ? roleReady && answeredCount === survey.questions.length : false;
-  const progress = survey && survey.questions.length > 0
-    ? ((roleReady ? 1 : 0) + answeredCount) / (survey.questions.length + 1) * 100
-    : 0;
+  const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
   async function handleSubmit() {
     if (!survey) return;
@@ -84,6 +85,7 @@ export default function SurveyPage() {
         survey_id: surveyId,
         anonymous_user_id: userId,
         role: finalRole,
+        feedback,
         answers: Object.entries(answers).map(([question_id, value]) => ({ question_id, value })),
       }),
     });
@@ -141,7 +143,7 @@ export default function SurveyPage() {
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: '#666' }}>
             <span>Progress</span>
-            <span>{(roleReady ? 1 : 0) + answeredCount} of {survey.questions.length + 1} answered</span>
+            <span>{completedSteps} of {totalSteps} answered</span>
           </div>
           <div style={{ height: 8, background: '#E0E0E0', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${progress}%`, background: RED, borderRadius: 4, transition: 'width 0.25s ease' }} />
@@ -255,6 +257,40 @@ export default function SurveyPage() {
             </div>
           );
         })}
+
+        {/* Open feedback — optional, always last */}
+        <div style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: '24px 20px',
+          marginBottom: 16,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          border: feedback.trim() ? `2px solid ${RED}` : '2px solid transparent',
+          transition: 'border-color 0.2s',
+        }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: DARK, marginBottom: 14, lineHeight: 1.5 }}>
+            <span style={{ color: RED, marginRight: 6 }}>{survey.questions.length + 2}.</span>
+            Any other feedback for us? <span style={{ color: '#aaa', fontWeight: 400, fontSize: 13 }}>(optional)</span>
+          </p>
+          <textarea
+            value={feedback}
+            onChange={e => setFeedback(e.target.value)}
+            placeholder="Share anything else about your experience today…"
+            rows={4}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              border: `2px solid ${feedback.trim() ? RED : '#E0E0E0'}`,
+              borderRadius: 10,
+              fontSize: 14,
+              color: DARK,
+              resize: 'vertical',
+              outline: 'none',
+              transition: 'border-color 0.2s',
+              fontFamily: 'inherit',
+            }}
+          />
+        </div>
 
         <button
           onClick={handleSubmit}

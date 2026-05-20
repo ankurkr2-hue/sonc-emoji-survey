@@ -28,6 +28,7 @@ interface ResponseRow {
   id: string;
   anonymous_user_id: string;
   role: string;
+  feedback: string;
   submitted_at: string;
   score: number;
   answers: AnswerRow[];
@@ -148,7 +149,7 @@ export default function AdminPage() {
     if (!analytics) return;
     const qIds = analytics.questions.map(q => q.id);
     const qTexts = analytics.questions.map(q => q.text);
-    const header = ['User ID', 'Role', 'Submitted At', 'Score', ...qTexts];
+    const header = ['User ID', 'Role', 'Submitted At', 'Score', ...qTexts, 'Open Feedback'];
     const rows = responses.map(r => {
       const vals = qIds.map(qid => {
         const a = r.answers.find(a => a.question_id === qid);
@@ -156,7 +157,7 @@ export default function AdminPage() {
         const m = EMOJI_META.find(m => m.value === Number(a.value));
         return m ? (m.emoji + ' ' + m.value + ' - ' + m.label) : a.value;
       });
-      return [r.anonymous_user_id, r.role || '', new Date(r.submitted_at).toLocaleString(), r.score, ...vals];
+      return [r.anonymous_user_id, r.role || '', new Date(r.submitted_at).toLocaleString(), r.score, ...vals, r.feedback || ''];
     });
     const csv = [header, ...rows].map(row => row.map(c => '"' + c + '"').join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -291,6 +292,7 @@ export default function AdminPage() {
                     {analytics.questions.map((q, i) => (
                       <th key={q.id} style={{ padding: '10px 12px', textAlign: 'center', color: '#555', fontWeight: 600, minWidth: 80 }}>Q{i + 1}</th>
                     ))}
+                    <th style={{ padding: '10px 12px', textAlign: 'left', color: '#555', fontWeight: 600 }}>Feedback</th>
                     <th style={{ padding: '10px 12px', textAlign: 'left', color: '#555', fontWeight: 600, fontSize: 11 }}>User</th>
                   </tr>
                 </thead>
@@ -324,6 +326,9 @@ export default function AdminPage() {
                           </td>
                         );
                       })}
+                      <td style={{ padding: '10px 12px', color: '#555', fontSize: 12, maxWidth: 200 }}>
+                        {r.feedback || <span style={{ color: '#ccc' }}>—</span>}
+                      </td>
                       <td style={{ padding: '10px 12px', color: '#aaa', fontFamily: 'monospace', fontSize: 10 }}>
                         {r.anonymous_user_id.slice(0, 8)}…
                       </td>

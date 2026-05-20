@@ -6,12 +6,13 @@ interface RequestBody {
   survey_id: string;
   anonymous_user_id: string;
   role: string;
+  feedback: string;
   answers: AnswerInput[];
 }
 
 export async function POST(req: Request) {
   const body = await req.json() as RequestBody;
-  const { survey_id, anonymous_user_id, role, answers } = body;
+  const { survey_id, anonymous_user_id, role, feedback, answers } = body;
 
   if (!survey_id || !anonymous_user_id || !role || !Array.isArray(answers)) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   const score = Math.round((sum / max) * 100);
 
   try {
-    const response = await db.insertResponse({ survey_id, anonymous_user_id, role, score });
+    const response = await db.insertResponse({ survey_id, anonymous_user_id, role, feedback: feedback ?? '', score });
     await db.insertAnswers(
       answers.map(a => ({ response_id: response.id, question_id: a.question_id, value: a.value })),
     );
