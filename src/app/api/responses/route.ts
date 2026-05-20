@@ -16,9 +16,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
   }
 
-  const blocked = await db.hasRecentResponse(survey_id, anonymous_user_id, 24);
-  if (blocked) return NextResponse.json({ error: 'Already submitted' }, { status: 429 });
-
   const questions = await db.getQuestions(survey_id);
   if (questions.length === 0) return NextResponse.json({ error: 'Survey not found' }, { status: 404 });
 
