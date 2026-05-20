@@ -1,50 +1,99 @@
-# Emoji Survey
+# Special Olympics NC — Emoji Survey
 
-A simple emoji-based survey web app built with Next.js and TypeScript.
-Data is stored in a local Excel file by default — no cloud setup required.
-Switch to Supabase (or any other backend) by implementing `src/lib/db/supabase.ts`.
+A participant feedback survey for Special Olympics NC events. Participants scan a QR code, answer emoji questions, and submit. The data manager views live results on the admin dashboard and in Supabase.
 
-## Quick start
+---
 
-1. **Clone / download** this folder.
-2. **Install dependencies**
-   npm install
-3. **Create `.env.local`**
-   Copy `.env.example` to `.env.local` and set `ADMIN_SECRET=yourpassword`.
-4. **Run**
-   npm run dev
-5. Open `http://localhost:3000` — you will be redirected to the seeded survey.
-6. Admin dashboard: `http://localhost:3000/admin/<surveyId>`
+## How it works
 
-The survey ID is printed in `data/survey-data.xlsx` (Surveys sheet) after first run.
-It also appears in the URL when you visit the home page.
+**Participants:** Scan a QR code → answer 3 emoji questions → tap Submit. Done in under a minute. Blocked from resubmitting for 24 hours.
 
-## Environment variables
+**Data manager:** Open the admin dashboard → see live counts, scores, and per-question breakdowns → QR code is shown on the page ready to display → export CSV anytime.
 
-| Variable | Default | Required |
-|---|---|---|
-| `DB_BACKEND` | `excel` | No |
-| `EXCEL_DATA_PATH` | `./data/survey-data.xlsx` | No |
-| `ADMIN_SECRET` | — | **Yes** |
-| `NEXT_PUBLIC_SUPABASE_URL` | — | Only for Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | — | Only for Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | — | Only for Supabase |
+---
 
-## Switching to Supabase
+## Setup (one time)
 
-1. Create a Supabase project at supabase.com.
-2. Paste `schema.sql` into the Supabase SQL editor and run it.
-3. Add Supabase env vars to `.env.local`.
-4. Set `DB_BACKEND=supabase` in `.env.local`.
-5. Implement `src/lib/db/supabase.ts` using `@supabase/supabase-js`.
-   The interface is in `src/lib/db/interface.ts` — each method maps 1-to-1 with a table.
+### 1 — Install dependencies
+```
+npm install
+```
 
-## Data stored in Excel
+### 2 — Set up Supabase
+1. Create a free account at supabase.com
+2. Create a new project
+3. Go to SQL Editor and run each statement in schema.sql one at a time
+4. Go to Project Settings → API and copy: Project URL, anon key, service_role key
 
-The file `data/survey-data.xlsx` has four sheets:
-- **Surveys** — survey metadata
-- **Questions** — questions per survey
-- **Responses** — one row per submission (includes computed score)
-- **Answers** — one row per question answer
+### 3 — Create .env.local in the project root
+```
+ADMIN_SECRET=choose-a-strong-password
+DB_BACKEND=supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
 
-You can open this file in Excel or Google Sheets at any time to view raw data.
+### 4 — Deploy to Vercel (recommended — gives a public URL for QR codes)
+1. Push code to GitHub
+2. Go to vercel.com → New Project → import your repo
+3. Add all 5 environment variables in the Vercel dashboard
+4. Deploy — you get a URL like https://sonc-survey.vercel.app
+
+### 4b — OR run locally (same WiFi network only)
+```
+npm run dev
+```
+
+---
+
+## Your URLs
+
+| Page | URL |
+|---|---|
+| Survey (participants) | https://your-domain.com/survey/00000000-0000-0000-0000-000000000001 |
+| Admin dashboard | https://your-domain.com/admin/00000000-0000-0000-0000-000000000001 |
+
+The admin page shows a QR code — display it on a screen or print it at the event.
+
+---
+
+## At the event
+
+1. Open the admin dashboard on your device
+2. The QR code at the top points to the participant survey
+3. Show it on a screen, projector, or printed sheet
+4. Participants scan and submit throughout the event
+5. Refresh the admin page to see live results
+6. Click Export CSV after the event to download everything
+
+---
+
+## Viewing data in Supabase
+
+- Table Editor → responses: one row per participant with score and timestamp
+- Table Editor → answers: one row per question per participant (value 1-5)
+- SQL Editor: run custom queries
+
+Useful query — average score by day:
+```sql
+select date(submitted_at) as day, round(avg(score)) as avg_score, count(*) as responses
+from responses group by day order by day desc;
+```
+
+Useful query — emoji breakdown per question:
+```sql
+select q.text as question, a.value, count(*) as count
+from answers a join questions q on q.id = a.question_id
+group by q.text, a.value order by q.text, a.value desc;
+```
+
+---
+
+## Admin password
+
+Change ADMIN_SECRET in .env.local (or Vercel environment variables) and restart.
+
+## Adding/removing questions
+
+Log into the admin dashboard and use the Add Question field. Changes take effect immediately.
