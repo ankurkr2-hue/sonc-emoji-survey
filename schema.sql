@@ -17,6 +17,8 @@ create table responses (
   id uuid primary key default gen_random_uuid(),
   survey_id uuid references surveys(id) on delete cascade,
   anonymous_user_id text not null,
+  role text,
+  feedback text,
   score int,
   submitted_at timestamptz default now()
 );
